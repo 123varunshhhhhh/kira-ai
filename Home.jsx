@@ -5,8 +5,10 @@ import { RiImageAddLine } from "react-icons/ri";
 import { MdChatBubbleOutline } from "react-icons/md";
 import { FiPlus } from "react-icons/fi";
 import { FaArrowUpLong } from "react-icons/fa6";
+import { MdPerson, MdLogout, MdLogin } from "react-icons/md";
 import { dataContext, prevUser, user } from './UserContext.jsx';
 import Chat from './Chat';
+import AuthModal from './AuthModal';
 import { generateResponse } from './gemini';
 import { query } from './huggingFace';
 // Custom hook to track window width
@@ -22,7 +24,7 @@ function useWindowWidth() {
   return width;
 }
 function Home() {
-let {startRes,setStartRes,popUp,setPopUP,input,setInput,feature,setFeature,showResult,setShowResult,prevFeature,setPrevFeature,genImgUrl,setGenImgUrl,history,setHistory}=useContext(dataContext)
+let {startRes,setStartRes,popUp,setPopUP,input,setInput,feature,setFeature,showResult,setShowResult,prevFeature,setPrevFeature,genImgUrl,setGenImgUrl,history,setHistory,currentUser,isAuthenticated,showAuthModal,setShowAuthModal,authMode,setAuthMode,logout}=useContext(dataContext)
 const [hoveredIdx, setHoveredIdx] = useState(null); // For hover preview
 const [sidebarOpen, setSidebarOpen] = useState(false); // For mobile sidebar
 const windowWidth = useWindowWidth();
@@ -162,6 +164,114 @@ async function handleGenerateImg() {
             aria-label="Close history sidebar"
           >×</button>
         )}
+        {/* User Profile Section */}
+        {isAuthenticated ? (
+          <div style={{
+            background: '#232b36',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px',
+            border: '2px solid #7fd7ff'
+          }}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: '#7fd7ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#000',
+                fontWeight: 'bold',
+                fontSize: '18px'
+              }}>
+                {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <div style={{color: '#fff', fontWeight: '600', fontSize: '16px'}}>
+                  {currentUser?.name || 'User'}
+                </div>
+                <div style={{color: '#888', fontSize: '12px'}}>
+                  {currentUser?.email}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              style={{
+                background: '#ff4444',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                justifyContent: 'center'
+              }}
+            >
+              <MdLogout style={{fontSize: '16px'}} />
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            background: '#232b36',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px',
+            border: '2px solid #666'
+          }}>
+            <div style={{textAlign: 'center', marginBottom: '12px'}}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: '#666',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 8px auto',
+                color: '#fff'
+              }}>
+                <MdPerson style={{fontSize: '20px'}} />
+              </div>
+              <div style={{color: '#888', fontSize: '14px'}}>
+                Guest User
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setAuthMode('login');
+                setShowAuthModal(true);
+              }}
+              style={{
+                background: '#7fd7ff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                justifyContent: 'center'
+              }}
+            >
+              <MdLogin style={{fontSize: '16px'}} />
+              Sign In
+            </button>
+          </div>
+        )}
+
         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px'}}>
           <h2 style={{color: 'white', margin: 0, fontSize: '1.3rem'}}>History</h2>
           <button
@@ -182,7 +292,12 @@ async function handleGenerateImg() {
           </button>
         </div>
         {history.length === 0 ? (
-          <div style={{color: '#aaa', textAlign: 'center', padding: '30px 0'}}>No history yet. Start chatting, uploading, or generating images!</div>
+          <div style={{color: '#aaa', textAlign: 'center', padding: '30px 0'}}>
+            {isAuthenticated 
+              ? "No history yet. Start chatting, uploading, or generating images!" 
+              : "Sign in to save your history across sessions!"
+            }
+          </div>
         ) : (
           <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
             {history.slice().reverse().map((item, idx, arr) => {
@@ -298,7 +413,7 @@ async function handleGenerateImg() {
       </div>
       {/* Main Content with left margin for sidebar (or none on mobile) */}
       <div style={{ flex: 1, marginLeft: isMobile ? 0 : sidebarWidth, minWidth: 0, position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <nav>
+        <nav style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px'}}>
             <div className="logo" onClick={()=>{
                 setStartRes(false)
                 setFeature("chat")
@@ -309,6 +424,30 @@ setPopUP(false)
             }}>
                 Kira AI
             </div>
+            {!isAuthenticated && (
+              <button
+                onClick={() => {
+                  setAuthMode('signup');
+                  setShowAuthModal(true);
+                }}
+                style={{
+                  background: '#7fd7ff',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <MdPerson style={{fontSize: '16px'}} />
+                Sign Up
+              </button>
+            )}
         </nav>
         <input type="file" accept='image/*' hidden id='inputImg' onChange={handleImage}/>
         {!startRes? <div className="hero" style={{width: '100%'}}>
@@ -402,6 +541,9 @@ setPopUP(false)
           </div>
         </div>
       </div>
+      
+      {/* Authentication Modal */}
+      <AuthModal />
     </div>
   )
 }
